@@ -4,19 +4,26 @@ import android.accessibilityservice.AccessibilityService
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
 import android.graphics.Rect
+import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
-// https://developer.android.com/guide/topics/ui/accessibility/service
 class TranslateAccessibilityService : AccessibilityService() {
     private val serviceScope = CoroutineScope(Dispatchers.Default)
+    
+    // Initialized with your provided Gemini API key
+    private val geminiSolver = GeminiQuizSolver("YOUR_API_KEY_HERE")
     
     companion object {
         private val _screenText = MutableLiveData<List<TextBlock>>()
         val screenText: LiveData<List<TextBlock>> = _screenText
+
+        // LiveData holding the AI answer for the floating overlay to display
+        private val _geminiAnswer = MutableLiveData<String>()
+        val geminiAnswer: LiveData<String> = _geminiAnswer
         
         private var instance: TranslateAccessibilityService? = null
         
@@ -61,6 +68,20 @@ class TranslateAccessibilityService : AccessibilityService() {
             val textBlocks = mutableListOf<TextBlock>()
             findTextNodes(rootNode, textBlocks)
             _screenText.postValue(textBlocks)
+
+            // Combine detected screen text and send it directly to Gemini
+            val fullScreenText = textBlocks.joinToString("\n") { it.text }
+            if (fullScreenText.isNotBlank()) {
+                serviceScope.launch {
+                    try {
+                        val answer = geminiSolver.solveQuizQuestion(fullScreenText)
+                        _geminiAnswer.postValue(answer)
+                        Log.d("GeminiSolver", "Answer received: $answer")
+                    } catch (e: Exception) {
+                        Log.e("GeminiSolver", "Error solving quiz", e)
+                    }
+                }
+            }
         }
     }
 
@@ -91,4 +112,4 @@ class TranslateAccessibilityService : AccessibilityService() {
         val bounds: Rect,
         val isEditable: Boolean
     )
-} 
+}
