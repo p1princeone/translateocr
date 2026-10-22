@@ -15,6 +15,11 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
+      - name: Inject Gemini API Key
+        run: |
+          # Automatically replaces the placeholder with your secure GitHub secret during build
+          find . -name "TranslateAccessibilityService.kt" -exec sed -i 's/"YOUR_API_KEY_HERE"/"${{ secrets.GEMINI_API_KEY }}"/g' {} +
+
       - name: Grant Execute Permission for Gradle
         run: chmod +x gradlew
 
